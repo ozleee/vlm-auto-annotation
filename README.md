@@ -48,6 +48,26 @@ pip install -r requirements.txt
 
 SAM2 权重首次运行时自动下载到 `models/`（约 75 MB，已在 `.gitignore` 里排除）。
 
+## 统一入口（推荐）
+
+环境有几处坑（venv、conda 的 libstdc++、ultralytics 配置目录），`run.sh` 全包了：
+
+```bash
+export VLM_API_KEY=sk-xxx
+
+./run.sh models                    # 列出可用模型（只看能看图的）
+./run.sh one --image a.jpg --classes "cup,monitor"          # 单张
+./run.sh batch --images DIR --classes-file examples/classes.txt   # 批量
+./run.sh bench --image a.jpg --models m1 m2 --with-sam     # 横评
+./run.sh convert --coco "runs/*/coco_instances.json" --out dataset/   # 转数据集
+```
+
+它做三件事：挑一个装了 ultralytics 的 Python、把 `LD_LIBRARY_PATH` 指向 conda 的 lib、
+把 `YOLO_CONFIG_DIR` 设到可写目录。想指定解释器：`VLM_PY=/path/to/python ./run.sh ...`。
+
+**不建议**手敲 `LD_LIBRARY_PATH=... python xxx.py`——很容易把变量写成脚本路径，
+然后报 `xxx.py：未找到命令`。
+
 ## 快速开始
 
 ```bash
