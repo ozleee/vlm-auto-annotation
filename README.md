@@ -1,7 +1,7 @@
 # vlm-auto-annotation
 
 用**视觉大模型**做识别、用 **SAM2** 做描边的自动标注工具。输入一张图和一份类别清单，
-输出可直接导入 CVAT 的 COCO 实例分割标注。
+输出可直接给yolo使用的权重模型。
 
 ```mermaid
 flowchart LR
