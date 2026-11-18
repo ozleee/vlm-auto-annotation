@@ -110,6 +110,30 @@ def main() -> int:
         raise SystemExit("--val-split 必须在 [0, 1) 之间")
 
     coco_files = expand_coco_args(args.coco)
+
+    # 同一张原图可能出现在多个 run 目录里（例如重复跑、或不同模型各跑一次）。
+    # 按 COCO 里的 file_name 去重，保留标注数最多的那份，避免后写覆盖前写。
+    picked: dict[str, tuple[Path, int]] = {}
+    for cf in coco_files:
+        try:
+            doc = json.loads(cf.read_text(encoding="utf-8"))
+            info = (doc.get("images") or [{}])[0]
+            stem = Path(str(info.get("file_name") or cf.parent.name)).stem
+            n = len(doc.get("annotations") or [])
+        except Exception:
+            picked[str(cf)] = (cf, 0)
+            continue
+        prev = picked.get(stem)
+        if prev is None:
+            picked[stem] = (cf, n)
+        elif n > prev[1]:
+            print(f"[去重] 同一张图 {stem}：用标注更多的 {cf}（{n} vs {prev[1]}），"
+                  f"丢弃 {prev[0]}")
+            picked[stem] = (cf, n)
+        else:
+            print(f"[去重] 同一张图 {stem}：保留 {prev[0]}（{prev[1]} 条），跳过 {cf}（{n} 条）")
+    coco_files = [v[0] for v in picked.values()]
+
     classes = load_class_order(coco_files, args.classes_file)
     if not classes:
         raise SystemExit("拿不到类别清单")
@@ -201,7 +225,10 @@ def main() -> int:
             d.mkdir(parents=True, exist_ok=True)
         for i in idx[:n_val]:
             img, lbl = pairs[i]
-            shutil.move(str(lbl), va_lbl / lbl.name)
+            if lbl.exists():
+                shutil.move(str(lbl), va_lbl / lbl.name)
+            else:
+                print(f"[警告] 切分时找不到标签 {lbl.name}，跳过（可能是重复原图）")
             if img and img.exists():
                 shutil.move(str(img), va_img / img.name)
         val_path = "images/val"
