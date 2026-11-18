@@ -9,7 +9,7 @@
 # 输出产物（标注结果、转换后的数据集、模型比对）
 autoanno_out/
 out/
-runs/
+runs*/
 dataset*/
 cmp/
 bench*/

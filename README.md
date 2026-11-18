@@ -31,7 +31,8 @@ flowchart LR
 
 | 文件 | 作用 |
 | --- | --- |
-| `auto_annotate.py` | 主程序：VLM 识别 + SAM2 描边 → COCO |
+| `auto_annotate.py` | 主程序：VLM 识别 + SAM2 描边 → COCO（单张） |
+| `batch_annotate.py` | 批量：遍历目录 + 断点续跑，SAM2 整批只加载一次 |
 | `coco2yolo.py` | COCO → YOLO 分割数据集（可直接训练） |
 | `benchmark_models.py` | 多个视觉模型横评（覆盖率 / 自一致性 / 掩码质量） |
 | `list_models.py` | 列出接口上可用的模型，标出哪些能看图 |
@@ -118,6 +119,38 @@ out/
 **阶段格式说明**：一个物体对应一条 annotation。一个物体如果有多个不连通的区域，
 那几段多边形放在同一条 annotation 的 `segmentation` 列表里（COCO 就是这么定义的）。
 同样，小于整图 0.05% 的碎片会被过滤掉。
+
+## 批量跑
+
+单张用 `auto_annotate.py`，整个目录用 `batch_annotate.py`：
+
+```bash
+export VLM_API_KEY=sk-xxx
+export VLM_MAX_TOKENS=16000        # 用推理模型时必需
+
+# 先跑 3 张验证
+python batch_annotate.py --images ~/yolo-pritice/datasets/desktop/raw \
+    --classes-file examples/classes.txt --model claude-haiku-5-5 \
+    --api-base https://opencode.ai/inference/go/openai/v1 \
+    --out runs --limit 3
+
+# 全量
+python batch_annotate.py --images ~/yolo-pritice/datasets/desktop/raw \
+    --classes-file examples/classes.txt --model claude-haiku-5-5 \
+    --api-base https://opencode.ai/inference/go/openai/v1 \
+    --out runs --resume
+```
+
+相比自己写 for 循环，它多做三件事：
+
+| 能力 | 说明 |
+| --- | --- |
+| SAM2 只加载一次 | 整批复用，省掉每张图 10~30 秒的加载时间 |
+| `--resume` 断点续跑 | 已生成 `coco_instances.json` 的图自动跳过；中断后重跑只补没做完的 |
+| 单张失败不中断整批 | 失败记进 `batch_report.json`，最后汇总，退出码为 2 |
+
+产物：`runs/<图片名>/{coco_instances.json, preview.jpg, detections.json}`
+和 `runs/batch_report.json`（含各类别检出统计、从未检出的类别、平均耗时）。
 
 ## 转成训练用的数据集
 
