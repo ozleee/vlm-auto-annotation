@@ -22,21 +22,21 @@ flowchart LR
 
 实测对比（同一张桌面照片，10 个自定义类别）：
 
-| 方案 | 认出类别 | 典型错误 |
-| --- | --- | --- |
-| YOLO-World（开放词表小模型） | 1 / 10 | 墙 → tv，耳机盒 → mouse |
-| **VLM + SAM2** | 8 / 10 | 漏检 2 类，无误判 |
+| 方案                         | 认出类别 | 典型错误                  |
+| ---------------------------- | -------- | ------------------------- |
+| YOLO-World（开放词表小模型） | 1 / 10   | 墙 → tv，耳机盒 → mouse |
+| **VLM + SAM2**         | 8 / 10   | 漏检 2 类，无误判         |
 
 ## 文件
 
-| 文件 | 作用 |
-| --- | --- |
-| `auto_annotate.py` | 主程序：VLM 识别 + SAM2 描边 → COCO（单张） |
-| `batch_annotate.py` | 批量：遍历目录 + 断点续跑，SAM2 整批只加载一次 |
-| `coco2yolo.py` | COCO → YOLO 分割数据集（可直接训练） |
-| `benchmark_models.py` | 多个视觉模型横评（覆盖率 / 自一致性 / 掩码质量） |
-| `list_models.py` | 列出接口上可用的模型，标出哪些能看图 |
-| `examples/classes.txt` | 类别清单示例 |
+| 文件                     | 作用                                             |
+| ------------------------ | ------------------------------------------------ |
+| `auto_annotate.py`     | 主程序：VLM 识别 + SAM2 描边 → COCO（单张）     |
+| `batch_annotate.py`    | 批量：遍历目录 + 断点续跑，SAM2 整批只加载一次   |
+| `coco2yolo.py`         | COCO → YOLO 分割数据集（可直接训练）            |
+| `benchmark_models.py`  | 多个视觉模型横评（覆盖率 / 自一致性 / 掩码质量） |
+| `list_models.py`       | 列出接口上可用的模型，标出哪些能看图             |
+| `examples/classes.txt` | 类别清单示例                                     |
 
 ## 安装
 
@@ -91,35 +91,35 @@ python auto_annotate.py ... --dry-run
 
 任何 **OpenAI 兼容**的 `chat/completions`（带 `image_url`）都能用：
 
-| 平台 | `--api-base` | `--model` 示例 |
-| --- | --- | --- |
-| OpenAI | `https://api.openai.com/v1` | `gpt-4o` |
-| 阿里通义 | `https://dashscope.aliyuncs.com/compatible-mode/v1` | `qwen-vl-max` |
-| 智谱 | `https://open.bigmodel.cn/api/paas/v4` | `glm-4v-plus` |
-| OpenRouter | `https://openrouter.ai/api/v1` | 任意视觉模型 |
-| OpenCode Go | `https://opencode.ai/inference/go/openai/v1` | `qwen4-max`、`gemini-4-argon` |
-| 本地 vLLM / Ollama | `http://127.0.0.1:8000/v1` | 你部署的模型 |
+| 平台               | `--api-base`                                        | `--model` 示例                  |
+| ------------------ | ----------------------------------------------------- | --------------------------------- |
+| OpenAI             | `https://api.openai.com/v1`                         | `gpt-4o`                        |
+| 阿里通义           | `https://dashscope.aliyuncs.com/compatible-mode/v1` | `qwen-vl-max`                   |
+| 智谱               | `https://open.bigmodel.cn/api/paas/v4`              | `glm-4v-plus`                   |
+| OpenRouter         | `https://openrouter.ai/api/v1`                      | 任意视觉模型                      |
+| OpenCode Go        | `https://opencode.ai/inference/go/openai/v1`        | `qwen4-max`、`gemini-4-argon` |
+| 本地 vLLM / Ollama | `http://127.0.0.1:8000/v1`                          | 你部署的模型                      |
 
 > OpenCode 有两个通道：`/zen/v1` 是按量计费，`/inference/go/openai/v1` 才是订阅额度。
 > 用错通道会报 `Insufficient balance`。
 
 ## 参数
 
-| 参数 | 默认 | 说明 |
-| --- | --- | --- |
-| `--image` | 必填 | 输入图片 |
-| `--classes` | — | 类别清单，逗号分隔 |
-| `--classes-file` | — | 类别清单文件，每行一个，支持 `#` 注释 |
-| `--api-base` | `$VLM_API_BASE` 或 OpenAI | 接口地址，要带 `/v1` |
-| `--api-key` | `$VLM_API_KEY` | 建议用环境变量，别写进命令行历史 |
-| `--model` | `$VLM_MODEL` 或 `gpt-4o` | 视觉模型名 |
-| `--seg-model` | `models/sam2.1_t.pt` | SAM2 权重路径，不存在会自动下载；`t/s/b/l` 越大越准越慢 |
-| `--device` | `cpu` | `cpu` 或 `0`（第一块 GPU） |
-| `--max-side` | `1280` | 送图前缩图的最长边，控制 token 成本 |
-| `--out` | `autoanno_out` | 输出目录 |
-| `--dry-run` | 关 | 只跑大模型 |
-| `--save-raw` | 关 | 保存大模型原始回复，排查 JSON 解析问题 |
-| `--prompt-file` | — | 自定义提示词模板，支持 `{classes}` 占位 |
+| 参数               | 默认                         | 说明                                                      |
+| ------------------ | ---------------------------- | --------------------------------------------------------- |
+| `--image`        | 必填                         | 输入图片                                                  |
+| `--classes`      | —                           | 类别清单，逗号分隔                                        |
+| `--classes-file` | —                           | 类别清单文件，每行一个，支持 `#` 注释                   |
+| `--api-base`     | `$VLM_API_BASE` 或 OpenAI  | 接口地址，要带 `/v1`                                    |
+| `--api-key`      | `$VLM_API_KEY`             | 建议用环境变量，别写进命令行历史                          |
+| `--model`        | `$VLM_MODEL` 或 `gpt-4o` | 视觉模型名                                                |
+| `--seg-model`    | `models/sam2.1_t.pt`       | SAM2 权重路径，不存在会自动下载；`t/s/b/l` 越大越准越慢 |
+| `--device`       | `cpu`                      | `cpu` 或 `0`（第一块 GPU）                            |
+| `--max-side`     | `1280`                     | 送图前缩图的最长边，控制 token 成本                       |
+| `--out`          | `autoanno_out`             | 输出目录                                                  |
+| `--dry-run`      | 关                           | 只跑大模型                                                |
+| `--save-raw`     | 关                           | 保存大模型原始回复，排查 JSON 解析问题                    |
+| `--prompt-file`  | —                           | 自定义提示词模板，支持 `{classes}` 占位                 |
 
 ## 输出
 
@@ -163,11 +163,11 @@ python batch_annotate.py --images ~/yolo-pritice/datasets/desktop/raw \
 
 相比自己写 for 循环，它多做三件事：
 
-| 能力 | 说明 |
-| --- | --- |
-| SAM2 只加载一次 | 整批复用，省掉每张图 10~30 秒的加载时间 |
+| 能力                  | 说明                                                                |
+| --------------------- | ------------------------------------------------------------------- |
+| SAM2 只加载一次       | 整批复用，省掉每张图 10~30 秒的加载时间                             |
 | `--resume` 断点续跑 | 已生成 `coco_instances.json` 的图自动跳过；中断后重跑只补没做完的 |
-| 单张失败不中断整批 | 失败记进 `batch_report.json`，最后汇总，退出码为 2 |
+| 单张失败不中断整批    | 失败记进 `batch_report.json`，最后汇总，退出码为 2                |
 
 产物：`runs/<图片名>/{coco_instances.json, preview.jpg, detections.json}`
 和 `runs/batch_report.json`（含各类别检出统计、从未检出的类别、平均耗时）。
@@ -233,12 +233,12 @@ python benchmark_models.py \
 
 它给四类信号：
 
-| 信号 | 含义 |
-| --- | --- |
-| 类别覆盖 | 清单里几类被找到（漏检是主要失败模式） |
-| 检出框数 | 有没有重复框或凭空多出来的框 |
+| 信号                   | 含义                                                       |
+| ---------------------- | ---------------------------------------------------------- |
+| 类别覆盖               | 清单里几类被找到（漏检是主要失败模式）                     |
+| 检出框数               | 有没有重复框或凭空多出来的框                               |
 | **自一致性 IoU** | 同一张图跑两次，框是否稳定。**不需要标注真值就能测** |
-| 耗时 / token | 成本 |
+| 耗时 / token           | 成本                                                       |
 
 产物：`bench/side_by_side.jpg`（各模型框并排）、`bench/benchmark.md`（对比表）、`bench/benchmark.json`。
 
@@ -267,11 +267,11 @@ export VLM_MAX_TOKENS=16000
 
 ### 实测案例（一张桌面图，10 个自定义类别）
 
-| 模型 | 框 | 覆盖 | 自一致性 | 观察 |
-| --- | ---: | ---: | ---: | --- |
-| `qwen4-max` | 8 | 80% | **0.86** | 框最紧，每个都贴物体 |
-| `claude-haiku-5-5` | 11 | **100%** | 0.81 | 找得全，但有类别混淆 |
-| `gemini-4-argon` | 10 | 90% | **0.37** | 框是巨大的重叠区域，不可用 |
+| 模型                 | 框 |           覆盖 |       自一致性 | 观察                       |
+| -------------------- | -: | -------------: | -------------: | -------------------------- |
+| `qwen4-max`        |  8 |            80% | **0.86** | 框最紧，每个都贴物体       |
+| `claude-haiku-5-5` | 11 | **100%** |           0.81 | 找得全，但有类别混淆       |
+| `gemini-4-argon`   | 10 |            90% | **0.37** | 框是巨大的重叠区域，不可用 |
 
 **教训**：`gemini-4-argon` 覆盖 90%，只看覆盖率会选它，但它的框完全不能用。
 自一致性（0.37）和并排图揭穿了这一点。
@@ -311,10 +311,10 @@ OpenCode Go 通道要求 `x-opencode-session` 头。脚本会检测 `api-base` �
 
 单张 1280×720 图片（实测）：
 
-| 环节 | 耗时（CPU） | token |
-| --- | --- | --- |
-| 视觉大模型识别 | 10–40 秒 | 约 1100 输入 / 1000 输出 |
-| SAM2 tiny 描边 | 5–20 秒 | — |
+| 环节           | 耗时（CPU） | token                    |
+| -------------- | ----------- | ------------------------ |
+| 视觉大模型识别 | 10–40 秒   | 约 1100 输入 / 1000 输出 |
+| SAM2 tiny 描边 | 5–20 秒    | —                       |
 
 GPU 上 SAM2 会快 10 倍以上。大模型那部分延迟取决于服务商。
 
@@ -324,6 +324,35 @@ GPU 上 SAM2 会快 10 倍以上。大模型那部分延迟取决于服务商。
 - **小目标框不稳**：VLM 对大物体的定位明显好于小物体，SAM2 也救不了框偏太远的情况
 - **不适合无文字提示的通用分割**：类别必须是你列出来的那些
 - **一次一张图**：批量请在外面套一层循环
+
+# 完整指令
+
+## 1. 导入Key
+
+cd ~/文档/deepseek-harness/default-workspace/vlm-auto-annotation
+export VLM_API_KEY='oc_sk_...'
+
+## 2. 标注（并发 4 路，约 12 分钟）
+
+./run.sh batch 
+  --images ~/yolo-pritice/datasets/desktop/raw 
+  --classes-file examples/classes_desktop.txt 
+  --model claude-haiku-5-5 
+  --api-base https://opencode.ai/inference/go/openai/v1 
+  --out runs_desktop --workers 4 --resume
+
+## 3. 转数据集（用我生成的分层名单）
+
+./run.sh convert 
+  --coco "runs_desktop/*/coco_instances.json" 
+  --classes-file examples/classes_desktop.txt 
+  --skip-empty --val-list split_val.txt 
+  --out dataset_desktop/
+
+## 4. GPU 训练
+
+./train.sh --data dataset_desktop/data.yaml --epochs 100 --batch 16
+
 
 ## 许可
 

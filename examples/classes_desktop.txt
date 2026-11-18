@@ -31,7 +31,7 @@ mouse               # 原 鼠标
 # house / car：窗外场景，本次只做桌面，不需要
 #
 # ---- 可选补充（自由发现里出现率很高，需要就取消注释）----
-# mouse_pad         # 8/8 张都有
-# notebook          # 7/8
-# power_adapter     # 7/8
-# tape_dispenser    # 6/8
+mouse_pad         # 8/8 张都有
+notebook          # 7/8
+power_adapter     # 7/8
+tape_dispenser    # 6/8

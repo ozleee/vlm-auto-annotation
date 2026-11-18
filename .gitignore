@@ -28,3 +28,4 @@ venv/
 *.egg-info/
 .yolo-config/
 split_val.txt
+train_runs/
