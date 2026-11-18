@@ -33,7 +33,8 @@ flowchart LR
 | --- | --- |
 | `auto_annotate.py` | 主程序：VLM 识别 + SAM2 描边 → COCO |
 | `coco2yolo.py` | COCO → YOLO 分割数据集（可直接训练） |
-| `benchmark_models.py` | 多个视觉模型横评（覆盖率 / 自一致性 / 成本） |
+| `benchmark_models.py` | 多个视觉模型横评（覆盖率 / 自一致性 / 掩码质量） |
+| `list_models.py` | 列出接口上可用的模型，标出哪些能看图 |
 | `examples/classes.txt` | 类别清单示例 |
 
 ## 安装
@@ -152,6 +153,16 @@ yolo segment train model=yolo26n-seg.pt data=dataset/data.yaml epochs=100 imgsz=
 - **`--classes-file` 一定要固定**，否则不同批次跑出来的类别编号会错位，数据集就没法合并
 - **`--val-split` 默认 0**，此时 `val` 指向 `train`。这样训练出来的指标是虚高的，只适合验证流程能不能跑通
 - **多段掩码只保留最大的一段**：YOLO 分割每行只能一个多边形，模型给出的碎片段会被丢弃（`convert_report.json` 里有计数）
+
+## 先看有哪些模型可用
+
+```bash
+export VLM_API_KEY=sk-xxx
+python list_models.py --api-base https://opencode.ai/inference/go/openai/v1 --vision-only
+```
+
+输出会列出每个模型的上下文长度、支持的输入类型（image / video / audio）和官方描述。
+元数据只能当参考——**最终必须拿自己的图跑一次**，因为"支持图像"不等于"在你的场景认得好"。
 
 ## 怎么挑视觉模型
 
