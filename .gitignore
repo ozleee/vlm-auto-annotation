@@ -1,0 +1,21 @@
+# 密钥与本地配置
+.env
+*.key
+
+# 权重文件（首次运行自动下载到 models/）
+*.pt
+!models/.gitkeep
+
+# 输出产物
+autoanno_out/
+out/
+*.jpg
+*.png
+!docs/*.jpg
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/

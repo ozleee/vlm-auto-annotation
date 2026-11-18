@@ -1,0 +1,5 @@
+# 视觉大模型接口只用到标准库 urllib，这里只有 SAM2 相关的依赖
+ultralytics>=8.4.215,<9
+supervision>=0.22
+opencv-python>=4.8
+numpy>=1.23

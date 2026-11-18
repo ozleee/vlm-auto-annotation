@@ -1,0 +1,17 @@
+# 类别清单示例：每行一个，井号开头是注释
+# 用法：--classes-file examples/classes.txt
+#
+# 写类名的心得：
+#   1. 用物体在照片里真实的样子，别用缩写  —— pencil cup 比 pen holder 好认
+#   2. 同义类别不要拆  —— 不要同时写 cup 和 mug
+#   3. 太细的子类先别拆  —— 先 "bottle"，跑通再细分成 "ink bottle"
+monitor
+cup
+cell phone
+glue stick
+ink bottle
+headphones
+nail clipper
+stapler
+pen holder
+digital watch
