@@ -36,7 +36,9 @@ import argparse
 import json
 import os
 import time
+import threading
 import traceback
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 import cv2
@@ -45,12 +47,15 @@ import numpy as np
 from auto_annotate import (DEFAULT_PROMPT, call_vlm, encode_image,
                            mask_to_polygons, normalize_boxes, parse_json_array)
 
+_SAM_LOCK = threading.Lock()
+
 IMG_EXT = {".jpg", ".jpeg", ".png", ".bmp", ".webp", ".tif", ".tiff"}
 
 
 def load_classes(classes: str | None, classes_file: str | None) -> list[str]:
     if classes_file:
-        items = [ln.strip() for ln in Path(classes_file).read_text(encoding="utf-8").splitlines()]
+        items = [ln.split('#')[0].strip()
+                 for ln in Path(classes_file).read_text(encoding="utf-8").splitlines()]
     else:
         items = [c.strip() for c in (classes or "").split(",")]
     out = [c for c in items if c and not c.startswith("#")]
@@ -87,9 +92,11 @@ def annotate_one(img_path: Path, classes: list[str], *, api_base: str, api_key: 
     }
 
     masks = None
+    # 零检出也要落盘：否则 --resume 会认为这张没做过，每次重跑都白烧一次 API
     if not dry_run and dets and sam is not None:
         boxes = np.array([d["bbox"] for d in dets], dtype=np.float32)
-        sr = sam.predict(img_path, bboxes=boxes, device=device, verbose=False)[0]
+        with _SAM_LOCK:
+            sr = sam.predict(img_path, bboxes=boxes, device=device, verbose=False)[0]
         masks = (sr.masks.data.cpu().numpy() if sr.masks is not None
                  else np.zeros((0, h, w), np.float32))
         cats = {c: i + 1 for i, c in enumerate(classes)}
@@ -106,6 +113,8 @@ def annotate_one(img_path: Path, classes: list[str], *, api_base: str, api_key: 
                          float(xs.max() - xs.min()), float(ys.max() - ys.min())],
                 "iscrowd": 0})
             aid += 1
+    if not dry_run and sam is not None:
+        # 无论有没有检出都写，保证 --resume 能正确跳过
         (out_dir / "coco_instances.json").write_text(
             json.dumps(coco, ensure_ascii=False), encoding="utf-8")
 
@@ -149,6 +158,9 @@ def main() -> int:
     ap.add_argument("--device", default="cpu", help="SAM2 设备：cpu 或 0")
     ap.add_argument("--max-side", type=int, default=1280)
     ap.add_argument("--limit", type=int, default=0, help="只处理前 N 张（0 = 全部）")
+    ap.add_argument("--workers", type=int, default=1,
+                    help="并发数：同时发几个 VLM 请求（默认 1）。VLM 调用是网络等待，"
+                         "开 3~5 通常能线性提速；太高会撞服务商限流")
     ap.add_argument("--resume", action="store_true", help="跳过已生成 coco 的图")
     ap.add_argument("--dry-run", action="store_true", help="只识别，不跑 SAM2")
     ap.add_argument("--prompt-file", help="自定义提示词模板")
@@ -203,24 +215,45 @@ def main() -> int:
         print(f"SAM2 已加载（整批复用）：{args.seg_model}")
 
     report, t_start = [], time.time()
-    for i, img in enumerate(pending, 1):
-        tag = f"[{i}/{len(pending)}] {img.name}"
+    done = 0
+
+    def work(img: Path) -> dict:
         try:
             r = annotate_one(img, classes, api_base=args.api_base, api_key=args.api_key,
                              model=args.model, sam=sam, seg_model=args.seg_model,
                              device=args.device, max_side=args.max_side,
                              prompt_template=prompt_template,
                              out_dir=out_root / img.stem, dry_run=args.dry_run)
-            report.append({"ok": True, **r})
-            print(f"{tag}: {r['boxes']} 框 / {r['objects']} 标注 / {r['latency_s']}s"
-                  + (f" / 漏 {len(r['missing'])} 类" if r["missing"] else " / 无漏检"))
-        except SystemExit as e:                 # call_vlm 的致命错误
-            report.append({"ok": False, "image": img.name, "error": str(e)})
-            print(f"{tag}: 失败 — {e}")
-        except Exception as e:                 # 单张失败不影响整批
-            report.append({"ok": False, "image": img.name, "error": f"{type(e).__name__}: {e}"})
-            print(f"{tag}: 失败 — {type(e).__name__}: {e}")
-            traceback.print_exc(limit=1)
+            return {"ok": True, **r}
+        except SystemExit as e:
+            return {"ok": False, "image": img.name, "error": str(e)}
+        except Exception as e:
+            return {"ok": False, "image": img.name, "error": f"{type(e).__name__}: {e}"}
+
+    workers = max(1, args.workers)
+    if workers == 1:
+        for img in pending:
+            r = work(img)
+            done += 1
+            report.append(r)
+            if r["ok"]:
+                print(f"[{done}/{len(pending)}] {r['image']}: {r['boxes']} 框 / {r['objects']} 标注"
+                      f" / {r['latency_s']}s" + (f" / 漏 {len(r['missing'])} 类" if r["missing"] else ""))
+            else:
+                print(f"[{done}/{len(pending)}] {r['image']}: 失败 — {r['error']}")
+    else:
+        print(f"并发 {workers} 路（VLM 请求并行，SAM2 加锁串行）")
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            futures = {pool.submit(work, img): img for img in pending}
+            for fut in as_completed(futures):
+                r = fut.result()
+                done += 1
+                report.append(r)
+                if r["ok"]:
+                    print(f"[{done}/{len(pending)}] {r['image']}: {r['boxes']} 框 / {r['objects']} 标注"
+                          f" / {r['latency_s']}s" + (f" / 漏 {len(r['missing'])} 类" if r["missing"] else ""))
+                else:
+                    print(f"[{done}/{len(pending)}] {r['image']}: 失败 — {r['error']}")
 
     ok = [r for r in report if r["ok"]]
     failed = [r for r in report if not r["ok"]]

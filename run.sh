@@ -58,6 +58,7 @@ case "${NAME}" in
   bench|compare)        SCRIPT="benchmark_models.py" ;;
   convert|yolo)         SCRIPT="coco2yolo.py" ;;
   models|list)          SCRIPT="list_models.py" ;;
+  discover|find)        SCRIPT="discover.py" ;;
   *.py)                 SCRIPT="${NAME}" ;;
   -h|--help|help)
     sed -n '2,20p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'

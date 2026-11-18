@@ -79,7 +79,7 @@ def load_classes(args) -> list[str]:
     """类别清单：--classes 逗号分隔，或 --classes-file 每行一个。"""
     if args.classes_file:
         text = Path(args.classes_file).read_text(encoding="utf-8")
-        items = [ln.strip() for ln in text.splitlines()]
+        items = [ln.split('#')[0].strip() for ln in text.splitlines()]
     else:
         items = [c.strip() for c in (args.classes or "").split(",")]
     classes = [c for c in items if c and not c.startswith("#")]

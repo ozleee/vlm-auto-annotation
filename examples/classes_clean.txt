@@ -1,0 +1,31 @@
+# 清理版类别清单（请按实际情况删改后再用）
+#
+# 改动原则：
+#   1. 全部英文小写、下划线分词 —— 避免中英混杂导致模型理解不稳
+#   2. 检测类别用单数 —— person 而不是 people
+#   3. 一个物体只留一个类 —— 容器类从 4 个减到 2 个
+#   4. 用模型自己的说法 —— 它更认 thermos_bottle / earbuds_case
+#
+# ⚠️ 类别顺序一旦定下来不要改：第 1 行 = 类别 0，改顺序等于整个数据集作废
+
+# ---- 桌面主体（出现率最高）----
+monitor
+thermos_bottle      # 原 cup。模型自由描述时用的是 thermos_bottle/thermos_cup
+cell_phone
+glue_stick
+earbuds_case        # 原 headphones。模型认的是充电盒，不是耳机本体
+nail_clipper
+stapler
+pen_holder
+smart_watch         # 原 digital watch
+ink_bottle          # 如果和 thermos_bottle 分不清，删掉这行，合并成一个
+
+# ---- 你新增的物体 ----
+person              # 原 people
+chair               # 原 椅子
+keyboard            # 原 键盘
+mouse               # 原 鼠标
+
+# ---- 窗外场景（如果决定标注窗外图，保留；否则删除）----
+house               # 原 hoouse，拼写错误
+car

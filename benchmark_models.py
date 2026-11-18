@@ -50,7 +50,8 @@ from auto_annotate import (DEFAULT_PROMPT, call_vlm, encode_image,
 
 def load_classes(classes: str | None, classes_file: str | None) -> list[str]:
     if classes_file:
-        items = [ln.strip() for ln in Path(classes_file).read_text(encoding="utf-8").splitlines()]
+        items = [ln.split('#')[0].strip()
+                 for ln in Path(classes_file).read_text(encoding="utf-8").splitlines()]
     else:
         items = [c.strip() for c in (classes or "").split(",")]
     out = [c for c in items if c and not c.startswith("#")]

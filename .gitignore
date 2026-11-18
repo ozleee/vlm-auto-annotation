@@ -13,6 +13,8 @@ runs*/
 dataset*/
 cmp/
 bench*/
+t_*/
+discover_out/
 *.md.bak
 *.jpg
 *.png
@@ -25,3 +27,4 @@ __pycache__/
 venv/
 *.egg-info/
 .yolo-config/
+split_val.txt

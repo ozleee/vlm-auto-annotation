@@ -1,0 +1,37 @@
+# 桌面物体标注清单（最终版）
+#
+# 约定：
+#   - 全部英文小写 + 下划线，不用中文
+#   - 用单数（person 而非 people）
+#   - 一个物体只留一个类；类名用模型自己的说法，命中率更高
+#
+# ⚠️ 顺序固定后不要改：第 1 行 = 类别 0。改顺序 = 整个数据集作废。
+#    以后要加类，只能往后追加。
+#
+# 共 13 类。每行末尾的注释说明它对应原来哪个名字。
+
+# ---- 原有 10 类（3 个改用了更准的叫法）----
+monitor
+thermos_bottle      # 原 cup —— 青色保温瓶，模型自己用的是 thermos_bottle
+cell_phone
+glue_stick
+ink_bottle          # 如果和 thermos_bottle 分不清，就删掉这行合并成一个
+earbuds_case        # 原 headphones —— 白色充电盒，不是耳机本体
+nail_clipper
+stapler
+pen_holder
+smart_watch         # 原 digital watch
+
+# ---- 你新增的 ----
+person              # 原 people，单数
+keyboard            # 原 键盘
+mouse               # 原 鼠标
+
+# ---- 已排除 ----
+# house / car：窗外场景，本次只做桌面，不需要
+#
+# ---- 可选补充（自由发现里出现率很高，需要就取消注释）----
+# mouse_pad         # 8/8 张都有
+# notebook          # 7/8
+# power_adapter     # 7/8
+# tape_dispenser    # 6/8

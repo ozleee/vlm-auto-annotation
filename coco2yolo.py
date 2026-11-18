@@ -58,7 +58,8 @@ def load_class_order(coco_files: list[Path], classes_file: str | None) -> list[s
     优先用 --classes-file（多次运行结果一致）；否则从 COCO 的 categories 里推。
     """
     if classes_file:
-        items = [ln.strip() for ln in Path(classes_file).read_text(encoding="utf-8").splitlines()]
+        items = [ln.split('#')[0].strip()
+                 for ln in Path(classes_file).read_text(encoding="utf-8").splitlines()]
         return [c for c in items if c and not c.startswith("#")]
 
     seen: dict[int, str] = {}
@@ -99,6 +100,11 @@ def main() -> int:
     ap.add_argument("--out", required=True, help="输出数据集目录")
     ap.add_argument("--classes-file", help="类别清单，决定类别编号顺序（强烈建议固定）")
     ap.add_argument("--image-dir", help="图片所在目录（COCO 里没记录 file_path 时用）")
+    ap.add_argument("--val-list", help="验证集名单文件（每行一个图片 stem），"
+                                        "适合按场景分层抽样的结果。优先于 --val-pattern")
+    ap.add_argument("--val-pattern", nargs="+",
+                    help="按文件名通配切验证集，如 \"desk_20261118_162*\"。"
+                         "适合用不同日期/批次做真正的泛化测试（优先于 --val-split）")
     ap.add_argument("--val-split", type=float, default=0.0,
                     help="验证集比例，如 0.2。为 0 时 val 复用 train（只够跑通流程，指标无意义）")
     ap.add_argument("--seed", type=int, default=0, help="切分随机种子，保证可复现")
@@ -215,7 +221,45 @@ def main() -> int:
         print(f"[{len(report)}] {fname}: {len(lines)} 个多边形")
 
     # ---------- 切分验证集 ----------
-    if args.val_split > 0 and len(pairs) >= 5:
+    if args.val_list:
+        names = {ln.split('#')[0].strip() for ln in Path(args.val_list).read_text(encoding='utf-8').splitlines()}
+        names = {n for n in names if n}
+        for d in (va_img, va_lbl):
+            d.mkdir(parents=True, exist_ok=True)
+        moved = 0
+        for img, lbl in list(pairs):
+            if lbl.stem in names:
+                if lbl.exists():
+                    shutil.move(str(lbl), va_lbl / lbl.name)
+                if img and img.exists():
+                    shutil.move(str(img), va_img / img.name)
+                moved += 1
+        val_path = "images/val" if moved else "images/train"
+        val_note = f"按名单切分：验证集 {moved} 张 / 训练集 {len(pairs) - moved} 张"
+        print(f"\n切分：{val_note}")
+        not_found = names - {lbl.stem for _, lbl in pairs}
+        if not_found:
+            print(f"[提示] 名单里有 {len(not_found)} 个名字在数据集中找不到（可能被 --skip-empty 排除）")
+    elif args.val_pattern:
+        from fnmatch import fnmatch
+        for d in (va_img, va_lbl):
+            d.mkdir(parents=True, exist_ok=True)
+        moved = 0
+        for img, lbl in list(pairs):
+            name = lbl.stem + ".jpg"
+            if any(fnmatch(name, pat) or fnmatch(lbl.stem, pat) for pat in args.val_pattern):
+                if lbl.exists():
+                    shutil.move(str(lbl), va_lbl / lbl.name)
+                if img and img.exists():
+                    shutil.move(str(img), va_img / img.name)
+                moved += 1
+        val_path = "images/val" if moved else "images/train"
+        val_note = (f"按文件名通配切分：验证集 {moved} 张 / 训练集 {len(pairs) - moved} 张"
+                    f"（patterns={args.val_pattern}）")
+        print(f"\n切分：{val_note}")
+        if moved in (0, len(pairs)):
+            print("[警告] 通配符把全部或零张图切到了验证集，请检查 pattern")
+    elif args.val_split > 0 and len(pairs) >= 5:
         rng = random.Random(args.seed)
         idx = list(range(len(pairs)))
         rng.shuffle(idx)
