@@ -133,7 +133,9 @@ def call_vlm(api_base: str, api_key: str, model: str, b64: str, prompt: str,
             ],
         }],
         "temperature": 0,
-        "max_tokens": 4000,
+        # 推理型模型（如 deepseek-v4.1-flash）会把输出预算先花在思考上，
+        # 预算不够就只返回空正文 + finish_reason=length。用 VLM_MAX_TOKENS 调高。
+        "max_tokens": int(os.environ.get("VLM_MAX_TOKENS", 4000)),
     }
     payload = json.dumps(body).encode()
     headers = build_headers(api_base, api_key)

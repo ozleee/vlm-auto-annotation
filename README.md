@@ -178,6 +178,29 @@ python benchmark_models.py \
 
 产物：`bench/side_by_side.jpg`（各模型框并排）、`bench/benchmark.md`（对比表）、`bench/benchmark.json`。
 
+### 加 `--with-sam` 连分割一起评
+
+```bash
+python benchmark_models.py --image desk.jpg --classes-file examples/classes.txt \
+  --models qwen3.8-max deepseek-v4.1-flash claude-haiku-5-5 \
+  --with-sam --out bench_seg/
+```
+
+会额外给出 **掩码占全图比例** 和 **碎片化对象数**（一个物体被切成几段），
+并给每个模型写出 `*_coco.json`，可转成训练集。
+
+### 推理模型的陷阱
+
+`deepseek-v4.1-flash`、`gpt-6-luna` 这类推理模型，会把输出预算先花在思考上。
+默认 `max_tokens=4000` 时它返回 **空正文 + `finish_reason=length`**，看起来像"模型不会看图"。
+实际是没来得及输出答案。用 `VLM_MAX_TOKENS` 调大：
+
+```bash
+export VLM_MAX_TOKENS=16000
+```
+
+实测该模型需要约 8300 个 reasoning token 才能答完。
+
 ### 实测案例（一张桌面图，10 个自定义类别）
 
 | 模型 | 框 | 覆盖 | 自一致性 | 观察 |
