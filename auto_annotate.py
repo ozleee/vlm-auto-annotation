@@ -364,7 +364,9 @@ def main() -> int:
     coco = {
         "info": {"description": f"VLM({args.model}) + SAM2 auto annotation",
                  "date_created": time.strftime("%Y-%m-%dT%H:%M:%S")},
-        "images": [{"id": 1, "file_name": image_path.name, "width": w, "height": h}],
+        # file_path 存绝对路径，方便 coco2yolo.py 找到原图（COCO 标准里没有这个字段，但无害）
+        "images": [{"id": 1, "file_name": image_path.name,
+                    "file_path": str(image_path.resolve()), "width": w, "height": h}],
         "categories": [{"id": i + 1, "name": c, "supercategory": "object"}
                        for i, c in enumerate(classes)],
         "annotations": [],

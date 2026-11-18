@@ -6,9 +6,12 @@
 *.pt
 !models/.gitkeep
 
-# 输出产物
+# 输出产物（标注结果、转换后的数据集、模型比对）
 autoanno_out/
 out/
+runs/
+dataset*/
+cmp/
 *.jpg
 *.png
 !docs/*.jpg

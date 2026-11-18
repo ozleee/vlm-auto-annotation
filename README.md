@@ -27,6 +27,14 @@ flowchart LR
 | YOLO-World（开放词表小模型） | 1 / 10 | 墙 → tv，耳机盒 → mouse |
 | **VLM + SAM2** | 8 / 10 | 漏检 2 类，无误判 |
 
+## 文件
+
+| 文件 | 作用 |
+| --- | --- |
+| `auto_annotate.py` | 主程序：VLM 识别 + SAM2 描边 → COCO |
+| `coco2yolo.py` | COCO → YOLO 分割数据集（可直接训练） |
+| `examples/classes.txt` | 类别清单示例 |
+
 ## 安装
 
 ```bash
@@ -108,6 +116,59 @@ out/
 **阶段格式说明**：一个物体对应一条 annotation。一个物体如果有多个不连通的区域，
 那几段多边形放在同一条 annotation 的 `segmentation` 列表里（COCO 就是这么定义的）。
 同样，小于整图 0.05% 的碎片会被过滤掉。
+
+## 转成训练用的数据集
+
+`auto_annotate.py` 输出的是 COCO，直接训练不行。用 `coco2yolo.py` 转成 YOLO 分割数据集：
+
+```bash
+# 单张（val 复用 train，只够跑通流程）
+python coco2yolo.py --coco out/coco_instances.json --out dataset/
+
+# 多张 + 二八分（正式训练用这个）
+python coco2yolo.py --coco "runs/*/coco_instances.json" \
+    --classes-file examples/classes.txt --val-split 0.2 --out dataset/
+```
+
+产物：
+
+```
+dataset/
+├── images/train/    images/val/
+├── labels/train/    labels/val/
+├── data.yaml        ultralytics 直接吃
+└── convert_report.json
+```
+
+然后就能训练了：
+
+```bash
+yolo segment train model=yolo26n-seg.pt data=dataset/data.yaml epochs=100 imgsz=640
+```
+
+几个关键点：
+
+- **`--classes-file` 一定要固定**，否则不同批次跑出来的类别编号会错位，数据集就没法合并
+- **`--val-split` 默认 0**，此时 `val` 指向 `train`。这样训练出来的指标是虚高的，只适合验证流程能不能跑通
+- **多段掩码只保留最大的一段**：YOLO 分割每行只能一个多边形，模型给出的碎片段会被丢弃（`convert_report.json` 里有计数）
+
+## 怎么挑视觉模型
+
+同一个接口换个 `--model` 就能横向对比。先 `--dry-run` 只看识别质量，不跑 SAM2，很快也不贵：
+
+```bash
+for m in qwen4-max gemini-4-argon gpt-6-luna claude-haiku-5-5 kimi-k3; do
+  echo "=== $m ==="
+  python auto_annotate.py --image desk.jpg --classes-file examples/classes.txt \
+    --api-base https://opencode.ai/inference/go/openai/v1 --model "$m" \
+    --out "cmp/$m" --dry-run 2>&1 | grep -E "类别统计|未检出"
+done
+```
+
+看两个指标：**漏检几类**、**框位置是否贴合**（打开各自目录的 `preview_boxes.jpg` 对比）。
+
+经验：大模型之间的差距主要体现在**小物体**和**细分类别**上。桌面小物件这种场景，
+参数量大的模型（`qwen4-max`、`gemini-4-argon`）明显好于小模型。
 
 ## 常见问题
 
