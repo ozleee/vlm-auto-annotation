@@ -12,6 +12,8 @@ out/
 runs/
 dataset*/
 cmp/
+bench/
+*.md.bak
 *.jpg
 *.png
 !docs/*.jpg

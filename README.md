@@ -33,6 +33,7 @@ flowchart LR
 | --- | --- |
 | `auto_annotate.py` | 主程序：VLM 识别 + SAM2 描边 → COCO |
 | `coco2yolo.py` | COCO → YOLO 分割数据集（可直接训练） |
+| `benchmark_models.py` | 多个视觉模型横评（覆盖率 / 自一致性 / 成本） |
 | `examples/classes.txt` | 类别清单示例 |
 
 ## 安装
@@ -154,21 +155,41 @@ yolo segment train model=yolo26n-seg.pt data=dataset/data.yaml epochs=100 imgsz=
 
 ## 怎么挑视觉模型
 
-同一个接口换个 `--model` 就能横向对比。先 `--dry-run` 只看识别质量，不跑 SAM2，很快也不贵：
+用 `benchmark_models.py` 横评，不要用 shell 循环——只比"检出几个框"会得出错误结论。
 
 ```bash
-for m in qwen4-max gemini-4-argon gpt-6-luna claude-haiku-5-5 kimi-k3; do
-  echo "=== $m ==="
-  python auto_annotate.py --image desk.jpg --classes-file examples/classes.txt \
-    --api-base https://opencode.ai/inference/go/openai/v1 --model "$m" \
-    --out "cmp/$m" --dry-run 2>&1 | grep -E "类别统计|未检出"
-done
+export VLM_API_KEY=sk-xxx
+python benchmark_models.py \
+  --image desk.jpg \
+  --classes-file examples/classes.txt \
+  --api-base https://opencode.ai/inference/go/openai/v1 \
+  --models qwen4-max claude-haiku-5-5 gemini-4-argon \
+  --repeat 2 --out bench/
 ```
 
-看两个指标：**漏检几类**、**框位置是否贴合**（打开各自目录的 `preview_boxes.jpg` 对比）。
+它给四类信号：
 
-经验：大模型之间的差距主要体现在**小物体**和**细分类别**上。桌面小物件这种场景，
-参数量大的模型（`qwen4-max`、`gemini-4-argon`）明显好于小模型。
+| 信号 | 含义 |
+| --- | --- |
+| 类别覆盖 | 清单里几类被找到（漏检是主要失败模式） |
+| 检出框数 | 有没有重复框或凭空多出来的框 |
+| **自一致性 IoU** | 同一张图跑两次，框是否稳定。**不需要标注真值就能测** |
+| 耗时 / token | 成本 |
+
+产物：`bench/side_by_side.jpg`（各模型框并排）、`bench/benchmark.md`（对比表）、`bench/benchmark.json`。
+
+### 实测案例（一张桌面图，10 个自定义类别）
+
+| 模型 | 框 | 覆盖 | 自一致性 | 观察 |
+| --- | ---: | ---: | ---: | --- |
+| `qwen4-max` | 8 | 80% | **0.86** | 框最紧，每个都贴物体 |
+| `claude-haiku-5-5` | 11 | **100%** | 0.81 | 找得全，但有类别混淆 |
+| `gemini-4-argon` | 10 | 90% | **0.37** | 框是巨大的重叠区域，不可用 |
+
+**教训**：`gemini-4-argon` 覆盖 90%，只看覆盖率会选它，但它的框完全不能用。
+自一致性（0.37）和并排图揭穿了这一点。
+
+判断顺序建议：**先看 side_by_side.jpg 排除框歪的，再看覆盖率和自一致性选剩下的**。
 
 ## 常见问题
 
